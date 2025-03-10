@@ -8,5 +8,8 @@
 		public int CategoryId { get; set; }
 		public Category Category { get; set; }
 		public string? ImagePath { get; set; }
+		public bool IsVisible { get; set; } = true;
+
+		public ICollection<ProductLog> ProductLogs { get; set; } = new List<ProductLog>();
 	}
 }
