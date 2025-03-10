@@ -7,5 +7,9 @@ namespace MyStorageAPI.Models.Data
 	{		
 		public UserRole Role { get; set; } = UserRole.User; // Global role (SuperAdmin, future roles possible)
 		public ICollection<WarehouseUser> WarehouseUsers { get; set; } = new List<WarehouseUser>();
+
+		public string DisplayName { get; set; } = string.Empty;
+		public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
+		public bool IsPremium { get; set; } = false;
 	}
 }
