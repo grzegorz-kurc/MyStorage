@@ -7,7 +7,9 @@ namespace MyStorageAPI.Models.Data
 		public int WarehouseId { get; set; }
 		public Warehouse Warehouse { get; set; }		
 		public string UserId { get; set; }
-		public User User { get; set; }		
-		public UserRole Role { get; set; } = UserRole.User; // User's role within the specific warehouse (Admin or User)
+		public User User { get; set; }
+
+		// User's role within the specific warehouse (Admin or User)
+		public UserRole Role { get; set; } = UserRole.User;
 	}
 }
