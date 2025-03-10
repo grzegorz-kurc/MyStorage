@@ -8,5 +8,6 @@
 		public int WarehouseId { get; set; }
 		public Warehouse Warehouse { get; set; }
 		public ICollection<Product> Products { get; set; } = new List<Product>(); // Initialized with an empty list to avoid NullReferenceException when adding items. Ensures that the collection is never null
+		public bool IsVisible { get; set; } = true;
 	}
 }

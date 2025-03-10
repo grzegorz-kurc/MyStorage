@@ -10,6 +10,8 @@ namespace MyStorageAPI.Models.Data
 
 		public string DisplayName { get; set; } = string.Empty;
 		public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
-		public bool IsPremium { get; set; } = false;
+		public UserSubscription Subscription { get; set; }
+
+		public bool IsVisible { get; set; } = true;
 	}
 }

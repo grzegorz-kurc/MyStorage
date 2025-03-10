@@ -15,6 +15,8 @@ namespace MyStorageAPI.Data
 		public DbSet<ProductLog> ProductLogs { get; set; }
 		public DbSet<UserLog> UserLogs { get; set; }
 		public DbSet<WarehouseUser> WarehouseUsers { get; set; }
+		public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
+		public DbSet<UserSubscription> UserSubscriptions { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
@@ -35,6 +37,32 @@ namespace MyStorageAPI.Data
 				.HasOne(wu => wu.User)
 				.WithMany(u => u.WarehouseUsers)
 				.HasForeignKey(wu => wu.UserId);
+
+			// Relation 1-N: SubscriptionPlan → UserSubscription
+			modelBuilder.Entity<UserSubscription>()
+				.HasOne(us => us.Plan)
+				.WithMany()
+				.HasForeignKey(us => us.SubscriptionPlanId);
+
+			// Relation 1-1: User → UserSubscription
+			modelBuilder.Entity<User>()
+				.HasOne(u => u.Subscription)
+				.WithOne(us => us.User)
+				.HasForeignKey<UserSubscription>(us => us.UserId);
+
+			// Automatically delete logs when a product is deleted
+			modelBuilder.Entity<Product>()
+				.HasMany(p => p.ProductLogs)
+				.WithOne(pl => pl.Product)
+				.HasForeignKey(pl => pl.ProductId)
+				.OnDelete(DeleteBehavior.Cascade);
+
+			// Automatically delete products when a category is deleted
+			modelBuilder.Entity<Category>()
+				.HasMany(c => c.Products)
+				.WithOne(p => p.Category)
+				.HasForeignKey(p => p.CategoryId)
+				.OnDelete(DeleteBehavior.Cascade);
 		}
 	}
 }
