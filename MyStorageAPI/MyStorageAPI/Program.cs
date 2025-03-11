@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using MyStorageAPI.Data;
+using MyStorageAPI.Models.Data;
 
 namespace MyStorageAPI
 {
@@ -24,6 +25,13 @@ namespace MyStorageAPI
 			builder.Services.AddSwaggerGen();
 
 			var app = builder.Build();
+
+			// Manually run database seeding without migrations
+			using (var scope = app.Services.CreateScope())
+			{
+				var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+				DbInitializer.SeedDatabase(dbContext);
+			}
 
 			// Enable Swagger in Development Mode
 			if (app.Environment.IsDevelopment())
