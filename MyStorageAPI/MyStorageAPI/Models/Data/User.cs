@@ -11,7 +11,8 @@ namespace MyStorageAPI.Models.Data
 		public string DisplayName { get; set; } = string.Empty;
 		public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
 		public UserSubscription Subscription { get; set; }
-
 		public bool IsVisible { get; set; } = true;
+
+		public ICollection<UserLog> UserLogs { get; set; } = new List<UserLog>();
 	}
 }

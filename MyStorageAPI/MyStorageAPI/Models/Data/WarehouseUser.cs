@@ -4,6 +4,7 @@ namespace MyStorageAPI.Models.Data
 {
 	public class WarehouseUser
 	{
+		public int Id { get; set; }
 		public int WarehouseId { get; set; }
 		public Warehouse Warehouse { get; set; }		
 		public string UserId { get; set; }
