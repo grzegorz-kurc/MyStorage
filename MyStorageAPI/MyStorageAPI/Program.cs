@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using MyStorageAPI.Data;
 using MyStorageAPI.Models.Data;
+using Serilog;
 
 namespace MyStorageAPI
 {
@@ -10,6 +11,10 @@ namespace MyStorageAPI
 		public static void Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+
+			// Load Serilog configuration from appsettings.json
+			builder.Host.UseSerilog((context, services, configuration) =>
+				configuration.ReadFrom.Configuration(context.Configuration));
 
 			var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -48,7 +53,19 @@ namespace MyStorageAPI
 
 			app.MapControllers();
 
-			app.Run();
+			try
+			{
+				Log.Information("Starting MyStorage API...");
+				app.Run();
+			}
+			catch (Exception ex)
+			{
+				Log.Fatal(ex, "Application terminated unexpectedly.");
+			}
+			finally
+			{
+				Log.CloseAndFlush();
+			}
 		}
 	}
 }
