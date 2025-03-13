@@ -1,8 +1,11 @@
-
 using Microsoft.EntityFrameworkCore;
 using MyStorageAPI.Data;
 using MyStorageAPI.Models.Data;
+using MyStorageAPI.Services.Interfaces;
+using MyStorageAPI.Services;
 using Serilog;
+using MyStorageAPI.Models.Configuration;
+using Microsoft.AspNetCore.Identity;
 
 namespace MyStorageAPI
 {
@@ -11,6 +14,8 @@ namespace MyStorageAPI
 		public static void Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+
+			builder.Services.Configure<AppConfig>(builder.Configuration.GetSection("AppConfig"));
 
 			// Load Serilog configuration from appsettings.json
 			builder.Host.UseSerilog((context, services, configuration) =>
@@ -28,6 +33,15 @@ namespace MyStorageAPI
 			// Add Swagger
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
+
+			// Configure Identity
+			builder.Services.AddIdentity<User, IdentityRole>()
+				.AddEntityFrameworkStores<ApplicationDbContext>()
+				.AddDefaultTokenProviders();
+
+			// Register services
+			builder.Services.AddScoped<IAuthService, AuthService>();
+			builder.Services.AddHttpClient<IEmailService, EmailService>();
 
 			var app = builder.Build();
 
