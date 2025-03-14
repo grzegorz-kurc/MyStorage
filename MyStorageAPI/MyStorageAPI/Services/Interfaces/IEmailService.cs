@@ -1,7 +1,9 @@
-﻿namespace MyStorageAPI.Services.Interfaces
+﻿using MyStorageAPI.Models.Responses;
+
+namespace MyStorageAPI.Services.Interfaces
 {
     public interface IEmailService
     {
-		Task<bool> SendEmailAsync(string to, string subject, string body);
-    }
+		Task<SendEmailResult> SendEmailAsync(string to, string subject, string body);
+	}
 }

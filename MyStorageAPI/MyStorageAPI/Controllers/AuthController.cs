@@ -18,12 +18,24 @@ namespace MyStorageAPI.Controllers
 		[HttpPost("register")]
 		public async Task<IActionResult> Register([FromBody] RegisterRequest request)
 		{
-			var result = await _authService.RegisterUserAsync(request.Email, request.Password);
+			var clientBaseUrl = $"{Request.Scheme}://{Request.Host.Value}";
+
+			var result = await _authService.RegisterUserAsync(request.Email, request.Password, clientBaseUrl);
 
 			if (!result.Success)
 				return BadRequest(new { errors = result.Errors });
 
-			return Ok("User registered successfully.");
+			return Ok("User registered successfully. Please check your email for confirmation.");
+		}
+
+		[HttpGet("confirm-email")]
+		public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
+		{
+			var result = await _authService.ConfirmEmailAsync(userId, token);
+			if (!result)
+				return BadRequest("Invalid or expired confirmation token.");
+
+			return Ok("Email confirmed successfully.");
 		}
 	}
 }
