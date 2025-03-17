@@ -6,6 +6,7 @@ using MyStorageAPI.Services;
 using Serilog;
 using MyStorageAPI.Models.Configuration;
 using Microsoft.AspNetCore.Identity;
+using System.Reflection;
 
 namespace MyStorageAPI
 {
@@ -15,7 +16,12 @@ namespace MyStorageAPI
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
+			// Load configuration
 			builder.Services.Configure<AppConfig>(builder.Configuration.GetSection("AppConfig"));
+
+			// Retrieve BaseUrl from configuration
+			var baseUrl = builder.Configuration.GetValue<string>("AppConfig:BaseUrl");
+			Console.WriteLine($"Using BaseUrl: {baseUrl}");
 
 			// Load Serilog configuration from appsettings.json
 			builder.Host.UseSerilog((context, services, configuration) =>
@@ -31,8 +37,11 @@ namespace MyStorageAPI
 			builder.Services.AddControllers();
 
 			// Add Swagger
-			builder.Services.AddEndpointsApiExplorer();
-			builder.Services.AddSwaggerGen();
+			builder.Services.AddSwaggerGen(options =>
+			{
+				var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+				options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
+			});
 
 			// Configure Identity
 			builder.Services.AddIdentity<User, IdentityRole>()

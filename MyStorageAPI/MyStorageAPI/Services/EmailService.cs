@@ -10,29 +10,29 @@ namespace MyStorageAPI.Services
 	public class EmailService : IEmailService
 	{
 		private readonly HttpClient _httpClient;
-		private readonly EmailServiceConfig _config;
+		private readonly AppConfig _config;
 		private readonly ILogger<EmailService> _logger;
 
 		public EmailService(HttpClient httpClient, IOptions<AppConfig> config, ILogger<EmailService> logger)
 		{
 			_httpClient = httpClient;
-			_config = config.Value.EmailService;
+			_config = config.Value;
 			_logger = logger;
 		}
 
 		public async Task<SendEmailResult> SendEmailAsync(string to, string subject, string body)
 		{
-			if (string.IsNullOrEmpty(_config.ConsumerKey) || string.IsNullOrEmpty(_config.ConsumerSecret))
+			if (string.IsNullOrEmpty(_config.EmailService.ConsumerKey) || string.IsNullOrEmpty(_config.EmailService.ConsumerSecret))
 			{
 				_logger.LogError("Email service credentials are missing in configuration.");
 				return new SendEmailResult { Success = false, Errors = new List<string> { "Email service configuration is missing." } };
 			}
 
-			var url = _config.BaseUrl;
+			var url = _config.EmailService.BaseUrl;
 
 			var mailData = new
 			{
-				from = _config.SenderEmail,
+				from = _config.EmailService.SenderEmail,
 				to,
 				subject,
 				content = body,
@@ -45,8 +45,8 @@ namespace MyStorageAPI.Services
 				var content = new StringContent(json, Encoding.UTF8, "application/json");
 
 				// Set authentication headers
-				content.Headers.Add("consumerKey", _config.ConsumerKey);
-				content.Headers.Add("consumerSecret", _config.ConsumerSecret);
+				content.Headers.Add("consumerKey", _config.EmailService.ConsumerKey);
+				content.Headers.Add("consumerSecret", _config.EmailService.ConsumerSecret);
 
 				var response = await _httpClient.PostAsync(url, content);
 

@@ -2,7 +2,7 @@
 {
 	public class AppConfig
 	{
-		public string ClientBaseUrl { get; set; } = string.Empty; // TODO: Remove?
+		public string BaseUrl { get; set; } = string.Empty;
 		public EmailServiceConfig EmailService { get; set; } = new EmailServiceConfig();
 	}
 

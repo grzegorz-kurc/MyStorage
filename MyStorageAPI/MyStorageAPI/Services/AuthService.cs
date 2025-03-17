@@ -4,18 +4,22 @@ using System.Text;
 using MyStorageAPI.Models.Data;
 using MyStorageAPI.Models.Responses;
 using MyStorageAPI.Services.Interfaces;
+using Microsoft.Extensions.Options;
+using MyStorageAPI.Models.Configuration;
 
 public class AuthService : IAuthService
 {
 	private readonly UserManager<User> _userManager;
 	private readonly IEmailService _emailService;
 	private readonly ILogger<AuthService> _logger;
+	private readonly AppConfig _config; 
 
-	public AuthService(UserManager<User> userManager, IEmailService emailService, ILogger<AuthService> logger)
+	public AuthService(UserManager<User> userManager, IEmailService emailService, ILogger<AuthService> logger, IOptions<AppConfig> config)
 	{
 		_userManager = userManager;
 		_emailService = emailService;
 		_logger = logger;
+		_config = config.Value;
 	}
 
 	public async Task<RegisterResult> RegisterUserAsync(string email, string password, string clientBaseUrl)
@@ -42,22 +46,10 @@ public class AuthService : IAuthService
 
 		if (!emailResult.Success)
 		{
-			_logger.LogError("Failed to send confirmation email to {Email}. Removing user from DB.", user.Email);
-			await _userManager.DeleteAsync(user);
+			_logger.LogError($"Failed to send confirmation email to {user.Email}. User must request a new email manually.");
 			return new RegisterResult { Success = false, Errors = new List<string> { "Failed to send confirmation email. Please try again later." } };
 		}
 
 		return new RegisterResult { Success = true };
-	}
-
-	public async Task<bool> ConfirmEmailAsync(string userId, string token)
-	{
-		var user = await _userManager.FindByIdAsync(userId);
-		if (user == null) return false;
-
-		var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
-		var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
-
-		return result.Succeeded;
 	}
 }
