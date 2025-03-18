@@ -81,7 +81,7 @@ namespace MyStorageAPI.Controllers
 		/// <remarks>
 		/// **Sample request:**
 		///
-		///     GET /api/auth/confirm-email?userId=12345&token=abcde12345
+		///     GET /api/auth/confirm-email?userId=12345&amp;token=abcde12345
 		///
 		/// The user must click the confirmation link sent to their email.
 		/// </remarks>
