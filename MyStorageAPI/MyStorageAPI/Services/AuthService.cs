@@ -69,4 +69,33 @@ public class AuthService : IAuthService
 
 		return result.Succeeded;
 	}
+
+	/// <summary>
+	/// Generates a new email confirmation token and resends the confirmation email.
+	/// </summary>
+	public async Task<RegisterResult> ResendConfirmationEmailAsync(string email, string clientBaseUrl)
+	{
+		var user = await _userManager.FindByEmailAsync(email);
+		if (user == null || user.EmailConfirmed)
+		{
+			return new RegisterResult { Success = false, Errors = new List<string> { "Invalid request or email is already confirmed." } };
+		}
+
+		// Generate a new confirmation token
+		var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+		var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+		var confirmationLink = $"{clientBaseUrl}/api/auth/confirm-email?userId={user.Id}&token={encodedToken}";
+
+		// Send the email
+		var emailBody = $"Hello {user.Email},<br/><br/>Please confirm your email by clicking the link below:<br/><a href='{confirmationLink}'>Confirm Email</a>";
+		var emailResult = await _emailService.SendEmailAsync(user.Email, "Confirm your MyStorage account", emailBody);
+
+		if (!emailResult.Success)
+		{
+			_logger.LogError($"Failed to resend confirmation email to {user.Email}");
+			return new RegisterResult { Success = false, Errors = new List<string> { "Failed to resend confirmation email. Please try again later." } };
+		}
+
+		return new RegisterResult { Success = true };
+	}
 }

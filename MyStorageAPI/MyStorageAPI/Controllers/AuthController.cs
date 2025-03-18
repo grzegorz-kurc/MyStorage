@@ -112,5 +112,54 @@ namespace MyStorageAPI.Controllers
 				return StatusCode(500, "An error occurred while processing the request.");
 			}
 		}
+
+		/// <summary>
+		/// Resends the email confirmation link to the user.
+		/// </summary>
+		/// <remarks>
+		/// **Sample request:**
+		///
+		///     POST /api/auth/resend-confirmation
+		///     {
+		///        "email": "user@example.com"
+		///     }
+		///
+		/// If the email is not confirmed yet, a new confirmation link is sent.
+		/// </remarks>
+		/// <param name="request">The request containing the user's email address.</param>
+		/// <returns>Success message or error details.</returns>
+		/// <response code="200">Confirmation email resent successfully.</response>
+		/// <response code="400">
+		/// Failed to resend confirmation email. Possible reasons:
+		/// - Email address does not exist.
+		/// - Email is already confirmed.
+		/// </response>
+		/// <response code="500">Internal server error.</response>
+		[HttpPost("resend-confirmation")]
+		public async Task<IActionResult> ResendConfirmationEmail([FromBody] ResendConfirmationRequest request)
+		{
+			if (!ModelState.IsValid)
+			{
+				return BadRequest(new { errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
+			}
+
+			var baseUrl = string.IsNullOrEmpty(_config.BaseUrl)
+				? $"{Request.Scheme}://{Request.Host.Value}"
+				: _config.BaseUrl;
+
+			try
+			{
+				var result = await _authService.ResendConfirmationEmailAsync(request.Email, baseUrl);
+				if (!result.Success)
+					return BadRequest(new { errors = result.Errors });
+
+				return Ok("Confirmation email has been resent. Please check your inbox.");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Unexpected error occurred while resending the confirmation email.");
+				return StatusCode(500, "An error occurred while processing the request.");
+			}
+		}
 	}
 }

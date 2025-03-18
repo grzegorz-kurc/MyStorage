@@ -6,5 +6,6 @@ namespace MyStorageAPI.Services.Interfaces
 	{
 		Task<RegisterResult> RegisterUserAsync(string email, string password, string clientBaseUrl);
 		Task<bool> ConfirmEmailAsync(string userId, string token);
+		Task<RegisterResult> ResendConfirmationEmailAsync(string email, string clientBaseUrl);
 	}
 }
