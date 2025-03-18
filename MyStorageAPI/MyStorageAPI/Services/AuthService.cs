@@ -22,6 +22,9 @@ public class AuthService : IAuthService
 		_config = config.Value;
 	}
 
+	/// <summary>
+	/// Registers a new user and sends an email confirmation link.
+	/// </summary>
 	public async Task<RegisterResult> RegisterUserAsync(string email, string password, string clientBaseUrl)
 	{
 		var user = new User { UserName = email, Email = email, EmailConfirmed = false };
@@ -37,7 +40,7 @@ public class AuthService : IAuthService
 		var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
 		// Create an activation link for the user
-		var confirmationLink = $"{clientBaseUrl}/confirm-email?userId={user.Id}&token={encodedToken}";
+		var confirmationLink = $"{clientBaseUrl}/api/auth/confirm-email?userId={user.Id}&token={encodedToken}";
 
 		// Send the email
 		var emailBody = $"Hello {user.Email},<br/><br/>Please confirm your email by clicking the link below:<br/><a href='{confirmationLink}'>Confirm Email</a>";
@@ -51,5 +54,19 @@ public class AuthService : IAuthService
 		}
 
 		return new RegisterResult { Success = true };
+	}
+
+	/// <summary>
+	/// Confirms the user's email address using the provided confirmation token.
+	/// </summary>
+	public async Task<bool> ConfirmEmailAsync(string userId, string token)
+	{
+		var user = await _userManager.FindByIdAsync(userId);
+		if (user == null) return false;
+
+		var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+		var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+
+		return result.Succeeded;
 	}
 }

@@ -71,7 +71,6 @@ namespace MyStorageAPI
 			// Use HTTPS
 			app.UseHttpsRedirection();
 
-			// app.UseAuthentication(); TODO: Add Identity
 			app.UseAuthorization();
 
 			app.MapControllers();

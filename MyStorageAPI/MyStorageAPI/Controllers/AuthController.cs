@@ -74,5 +74,43 @@ namespace MyStorageAPI.Controllers
 				return StatusCode(500, "An error occurred while processing the request.");
 			}
 		}
+
+		/// <summary>
+		/// Confirms the user's email address using the provided confirmation token.
+		/// </summary>
+		/// <remarks>
+		/// **Sample request:**
+		///
+		///     GET /api/auth/confirm-email?userId=12345&token=abcde12345
+		///
+		/// The user must click the confirmation link sent to their email.
+		/// </remarks>
+		/// <param name="userId">The unique identifier of the user.</param>
+		/// <param name="token">The email confirmation token.</param>
+		/// <returns>A success message or an error response.</returns>
+		/// <response code="200">Email confirmed successfully.</response>
+		/// <response code="400">
+		/// Email confirmation failed. Possible reasons:
+		/// - The confirmation token is invalid or expired.
+		/// - The user ID does not exist.
+		/// </response>
+		/// <response code="500">Internal server error.</response>
+		[HttpGet("confirm-email")]
+		public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
+		{
+			try
+			{
+				var result = await _authService.ConfirmEmailAsync(userId, token);
+				if (!result)
+					return BadRequest("Invalid or expired confirmation token.");
+
+				return Ok("Email confirmed successfully.");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Unexpected error occurred during email confirmation.");
+				return StatusCode(500, "An error occurred while processing the request.");
+			}
+		}
 	}
 }
