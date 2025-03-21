@@ -45,7 +45,7 @@ public class AuthService : IAuthService
 		// Send the email
 		var emailBody = $"Hello {user.Email},<br/><br/>Please confirm your email by clicking the link below:<br/><a href='{confirmationLink}'>Confirm Email</a>";
 
-		var emailResult = await _emailService.SendEmailAsync(user.Email, "Confirm your MyStorage account", emailBody);
+		var emailResult = await _emailService.SendEmailAsync(user.Email, "MyStorage: Confirm your account", emailBody);
 
 		if (!emailResult.Success)
 		{
@@ -88,12 +88,66 @@ public class AuthService : IAuthService
 
 		// Send the email
 		var emailBody = $"Hello {user.Email},<br/><br/>Please confirm your email by clicking the link below:<br/><a href='{confirmationLink}'>Confirm Email</a>";
-		var emailResult = await _emailService.SendEmailAsync(user.Email, "Confirm your MyStorage account", emailBody);
+		var emailResult = await _emailService.SendEmailAsync(user.Email, "MyStorage: Confirm your account", emailBody);
 
 		if (!emailResult.Success)
 		{
 			_logger.LogError($"Failed to resend confirmation email to {user.Email}");
 			return new RegisterResult { Success = false, Errors = new List<string> { "Failed to resend confirmation email. Please try again later." } };
+		}
+
+		return new RegisterResult { Success = true };
+	}
+
+	/// <summary>
+	/// Sends a password reset email to the user if the provided email exists.
+	/// Always returns a success message to prevent user enumeration attacks.
+	/// </summary>
+	public async Task<RegisterResult> SendPasswordResetEmailAsync(string email)
+	{
+		var user = await _userManager.FindByEmailAsync(email);
+
+		// If the user does not exist, we pretend that an email was sent (for security)
+		if (user == null)
+		{
+			_logger.LogWarning($"Password reset requested for non-existent email: {email}");
+			return new RegisterResult { Success = true }; // Return Success = true to not give away information about the existence of the email.
+		}
+
+		var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+		var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+		var resetLink = $"{_config.BaseUrl}/api/auth/reset-password?userId={user.Id}&token={encodedToken}";
+		var emailBody = $"Hello {user.Email},<br/><br/>You requested a password reset.<br/>Click below to reset your password:<br/><a href='{resetLink}'>Reset Password</a>";
+
+		var emailResult = await _emailService.SendEmailAsync(user.Email, "MyStorage: Password Reset Request", emailBody);
+
+		if (!emailResult.Success)
+		{
+			_logger.LogError($"Failed to send password reset email to {user.Email}");
+			return new RegisterResult { Success = false, Errors = new List<string> { "Failed to send password reset email. Please try again later." } };
+		}
+
+		return new RegisterResult { Success = true };
+	}
+
+	/// <summary>
+	/// Resets the user's password using a provided reset token.
+	/// </summary>
+	public async Task<RegisterResult> ResetPasswordAsync(string userId, string token, string newPassword)
+	{
+		var user = await _userManager.FindByIdAsync(userId);
+		if (user == null)
+		{
+			return new RegisterResult { Success = false, Errors = new List<string> { "User not found." } };
+		}
+
+		var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+		var resetResult = await _userManager.ResetPasswordAsync(user, decodedToken, newPassword);
+
+		if (!resetResult.Succeeded)
+		{
+			return new RegisterResult { Success = false, Errors = resetResult.Errors.Select(e => e.Description).ToList() };
 		}
 
 		return new RegisterResult { Success = true };

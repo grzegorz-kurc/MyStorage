@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using MyStorageAPI.Models.Configuration;
+using MyStorageAPI.Models.Enums;
 using MyStorageAPI.Models.Requests;
 using MyStorageAPI.Models.Responses;
 using MyStorageAPI.Services.Interfaces;
@@ -158,6 +159,101 @@ namespace MyStorageAPI.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Unexpected error occurred while resending the confirmation email.");
+				return StatusCode(500, "An error occurred while processing the request.");
+			}
+		}
+
+		/// <summary>
+		/// Initiates a password reset request by sending a reset link to the user's email.
+		/// Always returns success to prevent user enumeration attacks.
+		/// </summary>
+		/// <remarks>
+		/// **Sample request:**
+		///
+		///     POST /api/auth/reset-password-request
+		///     {
+		///        "email": "user@example.com"
+		///     }
+		///
+		/// If the provided email exists in the system, a password reset link will be sent.
+		/// This endpoint does not disclose whether the email is registered for security reasons.
+		/// </remarks>
+		/// <param name="request">Password reset request model containing the user's email.</param>
+		/// <returns>A generic success message.</returns>
+		/// <response code="200">
+		/// If an account with this email exists, a password reset email has been sent.
+		/// </response>
+		/// <response code="400">
+		/// Password reset request failed. Possible reasons:
+		/// - The email format is invalid or missing.
+		/// </response>
+		/// <response code="500">Internal server error.</response>
+		[HttpPost("reset-password-request")]
+		public async Task<IActionResult> ResetPasswordRequest([FromBody] ForgotPasswordRequest request)
+		{
+			try
+			{
+				if (!ModelState.IsValid)
+				{
+					return BadRequest(new { errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
+				}
+
+				await _authService.SendPasswordResetEmailAsync(request.Email);
+
+				return Ok("If an account with this email exists, a password reset email has been sent.");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Unexpected error occurred during password reset request.");
+				return StatusCode(500, "An error occurred while processing the request.");
+			}
+		}
+
+		/// <summary>
+		/// Resets the password for a user using the reset token.
+		/// </summary>
+		/// <remarks>
+		/// **Sample request:**
+		///
+		///     POST /api/auth/reset-password
+		///     {
+		///        "userId": "56309152-2154-4a0f-9e1d-df2dab2f1ef8",
+		///        "token": "base64-encoded-token",
+		///        "newPassword": "NewSecurePassword123!",
+		///        "confirmPassword": "NewSecurePassword123!"
+		///     }
+		///
+		/// The user must provide a valid reset token received via email.
+		/// </remarks>
+		/// <param name="request">Password reset request model.</param>
+		/// <returns>A success message or an error response.</returns>
+		/// <response code="200">Password reset successfully.</response>
+		/// <response code="400">
+		/// Password reset failed. Possible reasons:
+		/// - Invalid or expired token.
+		/// - Weak or invalid password.
+		/// - New password and confirmation do not match.
+		/// </response>
+		/// <response code="500">Internal server error.</response>
+		[HttpPost("reset-password")]
+		public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+		{
+			try
+			{
+				if (!ModelState.IsValid)
+				{
+					return BadRequest(new { errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
+				}
+
+				var result = await _authService.ResetPasswordAsync(request.UserId, request.Token, request.NewPassword);
+				if (!result.Success)
+					return BadRequest(new { errors = result.Errors });
+
+				return Ok("Password has been successfully reset.");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Unexpected error occurred during password reset.");
 				return StatusCode(500, "An error occurred while processing the request.");
 			}
 		}

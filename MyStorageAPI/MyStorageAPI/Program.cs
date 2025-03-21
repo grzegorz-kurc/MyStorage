@@ -43,10 +43,15 @@ namespace MyStorageAPI
 				options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 			});
 
-			// Configure Identity
+			// Configure Identity & Token Lifespan
 			builder.Services.AddIdentity<User, IdentityRole>()
 				.AddEntityFrameworkStores<ApplicationDbContext>()
 				.AddDefaultTokenProviders();
+
+			builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+			{
+				options.TokenLifespan = TimeSpan.FromMinutes(30);
+			});
 
 			// Register services
 			builder.Services.AddScoped<IAuthService, AuthService>();
@@ -54,7 +59,7 @@ namespace MyStorageAPI
 
 			var app = builder.Build();
 
-			// Manually run database seeding without migrations
+			// Run database seeding (if needed)
 			using (var scope = app.Services.CreateScope())
 			{
 				var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -68,9 +73,9 @@ namespace MyStorageAPI
 				app.UseSwaggerUI();
 			}
 
-			// Use HTTPS
+			// Enable Authentication & Authorization
 			app.UseHttpsRedirection();
-
+			app.UseAuthentication();
 			app.UseAuthorization();
 
 			app.MapControllers();
