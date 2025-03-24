@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using MyStorageAPI.Data;
 using MyStorageAPI.Models.Data;
@@ -16,12 +19,38 @@ namespace MyStorageAPI
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
-			// Load configuration
+			// Register AppConfig as IOptions<AppConfig> to allow injection in services (e.g. via IOptions<AppConfig>)
 			builder.Services.Configure<AppConfig>(builder.Configuration.GetSection("AppConfig"));
 
+			// Immediately bind AppConfig instance for early access (e.g. for JWT config before builder.Build())
+			// Note: Using IOptions<AppConfig> here would not work because the DI container is not yet built
+			var appConfig = builder.Configuration.GetSection("AppConfig").Get<AppConfig>();
+
+			if (appConfig is null)
+				throw new InvalidOperationException("AppConfig section is missing or invalid.");
+
+			builder.Services.AddAuthentication(options =>
+			{
+				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+			})
+			.AddJwtBearer(options =>
+			{
+				options.TokenValidationParameters = new TokenValidationParameters
+				{
+					ValidateIssuer = true,
+					ValidateAudience = true,
+					ValidateLifetime = true,
+					ValidateIssuerSigningKey = true,
+					ValidIssuer = appConfig.Jwt.Issuer,
+					ValidAudience = appConfig.Jwt.Audience,
+					IssuerSigningKey = new SymmetricSecurityKey(
+						Encoding.UTF8.GetBytes(appConfig.Jwt.SecretKey))
+				};
+			});
+
 			// Retrieve BaseUrl from configuration
-			var baseUrl = builder.Configuration.GetValue<string>("AppConfig:BaseUrl");
-			Console.WriteLine($"Using BaseUrl: {baseUrl}");
+			Console.WriteLine($"Using BaseUrl: {appConfig.BaseUrl}");
 
 			// Load Serilog configuration from appsettings.json
 			builder.Host.UseSerilog((context, services, configuration) =>
@@ -52,7 +81,7 @@ namespace MyStorageAPI
 			{
 				options.TokenLifespan = TimeSpan.FromMinutes(30);
 			});
-
+		
 			// Register services
 			builder.Services.AddScoped<IAuthService, AuthService>();
 			builder.Services.AddHttpClient<IEmailService, EmailService>();
