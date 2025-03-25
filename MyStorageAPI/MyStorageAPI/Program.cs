@@ -85,6 +85,7 @@ namespace MyStorageAPI
 			// Register services
 			builder.Services.AddScoped<IAuthService, AuthService>();
 			builder.Services.AddHttpClient<IEmailService, EmailService>();
+			builder.Services.AddScoped<IJwtTokenGeneratorService, JwtTokenGeneratorService>();
 
 			var app = builder.Build();
 
