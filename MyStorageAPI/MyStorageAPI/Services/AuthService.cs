@@ -6,18 +6,28 @@ using MyStorageAPI.Models.Responses;
 using MyStorageAPI.Services.Interfaces;
 using Microsoft.Extensions.Options;
 using MyStorageAPI.Models.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using MyStorageAPI.Services;
 
 public class AuthService : IAuthService
 {
 	private readonly UserManager<User> _userManager;
 	private readonly IEmailService _emailService;
+	private readonly IJwtTokenGeneratorService _jwtTokenGeneratorService;
 	private readonly ILogger<AuthService> _logger;
 	private readonly AppConfig _config; 
 
-	public AuthService(UserManager<User> userManager, IEmailService emailService, ILogger<AuthService> logger, IOptions<AppConfig> config)
+	public AuthService(UserManager<User> userManager, 
+		IEmailService emailService,
+		IJwtTokenGeneratorService jwtTokenGeneratorService,
+		ILogger<AuthService> logger, 
+		IOptions<AppConfig> config)
 	{
 		_userManager = userManager;
 		_emailService = emailService;
+		_jwtTokenGeneratorService = jwtTokenGeneratorService;
 		_logger = logger;
 		_config = config.Value;
 	}
@@ -151,5 +161,35 @@ public class AuthService : IAuthService
 		}
 
 		return new RegisterResult { Success = true };
+	}
+
+	/// <summary>
+	/// Authenticates the user and generates JWT + Refresh Token.
+	/// </summary>
+	public async Task<LoginResult> LoginAsync(string email, string password)
+	{
+		var user = await _userManager.FindByEmailAsync(email);
+		if (user == null || !await _userManager.CheckPasswordAsync(user, password))
+		{
+			return new LoginResult
+			{
+				Success = false,
+				Errors = new List<string> { "Invalid email or password." }
+			};
+		}
+
+		var tokens = _jwtTokenGeneratorService.GenerateTokens(user);
+
+		return new LoginResult
+		{
+			Success = true,
+			Response = new LoginResponse
+			{
+				Token = tokens.Token,
+				Expiration = tokens.Expiration,
+				RefreshToken = tokens.RefreshToken,
+				RefreshTokenExpiration = tokens.RefreshTokenExpiration
+			}
+		};
 	}
 }

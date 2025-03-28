@@ -257,5 +257,48 @@ namespace MyStorageAPI.Controllers
 				return StatusCode(500, "An error occurred while processing the request.");
 			}
 		}
+
+		/// <summary>
+		/// Authenticates the user and returns a JWT token.
+		/// </summary>
+		/// <remarks>
+		/// **Sample request:**
+		///
+		///     POST /api/auth/login
+		///     {
+		///        "email": "user@example.com",
+		///        "password": "SecurePassword123!"
+		///     }
+		///
+		/// </remarks>
+		/// <param name="request">Login request containing email and password.</param>
+		/// <returns>A JWT token if authentication succeeds, or error messages.</returns>
+		/// <response code="200">Login successful, token returned.</response>
+		/// <response code="400">Login failed. Invalid credentials or request.</response>
+		/// <response code="500">Internal server error.</response>
+		[HttpPost("login")]
+		public async Task<IActionResult> Login([FromBody] LoginRequest request)
+		{
+			try
+			{
+				if (!ModelState.IsValid)
+				{
+					return BadRequest(new { errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
+				}
+
+				var result = await _authService.LoginAsync(request.Email, request.Password);
+				if (!result.Success)
+				{
+					return BadRequest(new { errors = result.Errors });
+				}
+
+				return Ok(result.Response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Unexpected error occurred during login.");
+				return StatusCode(500, "An error occurred while processing the request.");
+			}
+		}
 	}
 }
