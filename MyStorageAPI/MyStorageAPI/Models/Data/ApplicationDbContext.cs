@@ -17,6 +17,7 @@ namespace MyStorageAPI.Data
 		public DbSet<WarehouseUser> WarehouseUsers { get; set; }
 		public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
 		public DbSet<UserSubscription> UserSubscriptions { get; set; }
+		public DbSet<RefreshToken> RefreshTokens { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
@@ -79,6 +80,13 @@ namespace MyStorageAPI.Data
 				.WithOne(p => p.Category)
 				.HasForeignKey(p => p.CategoryId)
 				.OnDelete(DeleteBehavior.NoAction);
+
+			// Cascade delete for RefreshTokens (deleting a user removes their refresh tokens)
+			modelBuilder.Entity<RefreshToken>()
+				.HasOne(rt => rt.User)
+				.WithMany(u => u.RefreshTokens)
+				.HasForeignKey(rt => rt.UserId)
+				.OnDelete(DeleteBehavior.Cascade);
 		}
 	}
 }

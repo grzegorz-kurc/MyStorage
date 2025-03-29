@@ -18,5 +18,6 @@ namespace MyStorageAPI.Models.Data
 		public bool IsVisible { get; set; } = true;
 
 		public ICollection<UserLog> UserLogs { get; set; } = new List<UserLog>();
+		public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 	}
 }
