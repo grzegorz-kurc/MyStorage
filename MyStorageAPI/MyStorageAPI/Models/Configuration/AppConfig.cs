@@ -23,5 +23,6 @@
 		public string SecretKey { get; set; } = string.Empty;
 		public int TokenLifetimeMinutes { get; set; }
 		public int RefreshTokenLifetimeDays { get; set; }
+		public int MaxRefreshTokensPerUser { get; set; }
 	}
 }
