@@ -2,7 +2,7 @@
 {
 	public class RefreshTokenRequest
 	{
-		public string Token { get; set; } = string.Empty; // expired access token
+		public string ExpiredAccessToken { get; set; } = string.Empty;
 		public string RefreshToken { get; set; } = string.Empty;
 	}
 }
