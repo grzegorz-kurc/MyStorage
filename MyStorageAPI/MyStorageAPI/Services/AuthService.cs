@@ -10,6 +10,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using MyStorageAPI.Services;
+using MyStorageAPI.Data;
+using Microsoft.EntityFrameworkCore;
 
 public class AuthService : IAuthService
 {
@@ -17,19 +19,22 @@ public class AuthService : IAuthService
 	private readonly IEmailService _emailService;
 	private readonly IJwtTokenGeneratorService _jwtTokenGeneratorService;
 	private readonly ILogger<AuthService> _logger;
-	private readonly AppConfig _config; 
+	private readonly AppConfig _config;
+	private readonly ApplicationDbContext _context;
 
 	public AuthService(UserManager<User> userManager, 
 		IEmailService emailService,
 		IJwtTokenGeneratorService jwtTokenGeneratorService,
 		ILogger<AuthService> logger, 
-		IOptions<AppConfig> config)
+		IOptions<AppConfig> config,
+		ApplicationDbContext context)
 	{
 		_userManager = userManager;
 		_emailService = emailService;
 		_jwtTokenGeneratorService = jwtTokenGeneratorService;
 		_logger = logger;
 		_config = config.Value;
+		_context = context;
 	}
 
 	/// <summary>
@@ -164,11 +169,19 @@ public class AuthService : IAuthService
 	}
 
 	/// <summary>
-	/// Authenticates the user and generates JWT + Refresh Token.
+	/// Authenticates the user and generates a new access token (JWT) and refresh token.
+	/// The access token is short-lived and used for authenticated API access.
+	/// The refresh token is long-lived and stored in the database for token renewal.
+	///
+	/// If the number of existing refresh tokens for the user exceeds the configured limit,
+	/// the oldest tokens are automatically removed before storing the new one.
 	/// </summary>
 	public async Task<LoginResult> LoginAsync(string email, string password)
 	{
-		var user = await _userManager.FindByEmailAsync(email);
+		var user = await _context.Users
+			.Include(u => u.RefreshTokens)
+			.FirstOrDefaultAsync(u => u.Email == email);
+
 		if (user == null || !await _userManager.CheckPasswordAsync(user, password))
 		{
 			return new LoginResult
@@ -179,6 +192,32 @@ public class AuthService : IAuthService
 		}
 
 		var tokens = _jwtTokenGeneratorService.GenerateTokens(user);
+
+		// Enforce refresh token limit (max N tokens per user)
+		var maxTokens = _config.Jwt.MaxRefreshTokensPerUser;
+		if (user.RefreshTokens.Count >= maxTokens)
+		{
+			var tokensToRemove = user.RefreshTokens
+				.OrderBy(rt => rt.Expires)
+				.Take(user.RefreshTokens.Count - maxTokens + 1)
+				.ToList();
+
+			foreach (var oldToken in tokensToRemove)
+			{
+				user.RefreshTokens.Remove(oldToken);
+			}
+		}
+
+		// Save refresh token to database
+		var newRefreshToken = new RefreshToken
+		{
+			Token = tokens.RefreshToken,
+			Expires = tokens.RefreshTokenExpiration,
+			UserId = user.Id
+		};
+
+		user.RefreshTokens.Add(newRefreshToken);
+		await _context.SaveChangesAsync();
 
 		return new LoginResult
 		{
@@ -191,5 +230,43 @@ public class AuthService : IAuthService
 				RefreshTokenExpiration = tokens.RefreshTokenExpiration
 			}
 		};
+	}
+
+	/// <summary>
+	/// Extracts the claims principal from an expired JWT token.
+	/// Lifetime validation is disabled to allow access to claims for token renewal.
+	/// </summary>
+	private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+	{
+		var tokenValidationParameters = new TokenValidationParameters
+		{
+			ValidateIssuer = true,
+			ValidateAudience = true,
+			ValidateIssuerSigningKey = true,
+			ValidateLifetime = false, // Ignore expiration
+			ValidIssuer = _config.Jwt.Issuer,
+			ValidAudience = _config.Jwt.Audience,
+			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config.Jwt.SecretKey))
+		};
+
+		var tokenHandler = new JwtSecurityTokenHandler();
+
+		try
+		{
+			var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var validatedToken);
+
+			if (validatedToken is not JwtSecurityToken jwtToken ||
+				!jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+			{
+				return null;
+			}
+
+			return principal;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Token validation failed in GetPrincipalFromExpiredToken.");
+			return null;
+		}
 	}
 }
