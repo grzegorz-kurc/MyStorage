@@ -233,8 +233,12 @@ public class AuthService : IAuthService
 	}
 
 	/// <summary>
-	/// Extracts the claims principal from an expired JWT token.
-	/// Lifetime validation is disabled to allow access to claims for token renewal.
+	/// Extracts the ClaimsPrincipal from an expired JWT access token
+	/// without validating its lifetime. This allows the server to access the user's identity
+	/// and claims even after the token has expired.
+	///
+	/// This method is used during the refresh token flow to validate who the user is
+	/// and match the expired token with a valid, non-revoked refresh token stored in the database.
 	/// </summary>
 	private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
 	{
