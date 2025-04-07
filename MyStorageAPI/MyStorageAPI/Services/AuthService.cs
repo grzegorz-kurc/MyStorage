@@ -184,6 +184,11 @@ public class AuthService : IAuthService
 
 		if (user == null || !await _userManager.CheckPasswordAsync(user, password))
 		{
+			if (user == null)
+				_logger.LogWarning($"Login attempt failed: user not found: {email}");
+			else
+				_logger.LogWarning($"Login attempt failed: incorrect password for user: {email}");
+
 			return new LoginResult
 			{
 				Success = false,
