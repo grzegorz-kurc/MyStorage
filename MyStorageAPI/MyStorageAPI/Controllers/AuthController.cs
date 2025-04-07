@@ -300,5 +300,49 @@ namespace MyStorageAPI.Controllers
 				return StatusCode(500, "An error occurred while processing the request.");
 			}
 		}
+
+		/// <summary>
+		/// Refreshes JWT access token using a valid refresh token.
+		/// </summary>
+		/// <remarks>
+		/// **Sample request:**
+		///
+		///     POST /api/auth/refresh
+		///     {
+		///         "expiredAccessToken": "eyJhbGciOi...",
+		///         "refreshToken": "Qx7bJML5...=="  
+		///     }
+		/// </remarks>
+		/// <param name="request">Refresh token request model.</param>
+		/// <returns>New access and refresh token or error message.</returns>
+		/// <response code="200">Token refreshed successfully.</response>
+		/// <response code="400">Invalid or expired token.</response>
+		/// <response code="500">Internal server error.</response>
+		[HttpPost("refresh")]
+		public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+		{
+			try
+			{
+				if (!ModelState.IsValid)
+				{
+					return BadRequest(new
+					{
+						errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+					});
+				}
+
+				var result = await _authService.RefreshTokenAsync(request.ExpiredAccessToken, request.RefreshToken);
+
+				if (!result.Success)
+					return BadRequest(new { errors = result.Errors });
+
+				return Ok(result.Response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Unexpected error occurred while refreshing token.");
+				return StatusCode(500, "An error occurred while processing the request.");
+			}
+		}
 	}
 }

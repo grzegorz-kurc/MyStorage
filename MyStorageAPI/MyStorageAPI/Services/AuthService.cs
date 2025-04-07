@@ -233,6 +233,108 @@ public class AuthService : IAuthService
 	}
 
 	/// <summary>
+	/// Validates an expired access token and a refresh token.
+	/// If both are valid, generates and returns a new pair of tokens (access + refresh).
+	/// The old refresh token is revoked, and a new one is saved in the database.
+	///
+	/// This method ensures that only active and confirmed users can refresh tokens.
+	/// </summary>
+	public async Task<LoginResult> RefreshTokenAsync(string expiredAccessToken, string refreshToken)
+	{
+		var principal = GetPrincipalFromExpiredToken(expiredAccessToken);
+		if (principal == null)
+		{
+			return new LoginResult
+			{
+				Success = false,
+				Errors = new List<string> { "Invalid or expired access token." }
+			};
+		}
+
+		var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+		if (string.IsNullOrEmpty(userId))
+		{
+			return new LoginResult
+			{
+				Success = false,
+				Errors = new List<string> { "Invalid access token payload." }
+			};
+		}
+
+		var user = await _context.Users
+			.Include(u => u.RefreshTokens)
+			.FirstOrDefaultAsync(u => u.Id == userId);
+
+		if (user == null || !user.EmailConfirmed || !user.IsVisible)
+		{
+			return new LoginResult
+			{
+				Success = false,
+				Errors = new List<string> { "User not found or inactive." }
+			};
+		}
+
+		var storedRefreshToken = user.RefreshTokens.FirstOrDefault(rt =>
+			rt.Token == refreshToken &&
+			rt.Expires > DateTime.UtcNow &&
+			!rt.IsRevoked);
+
+		if (storedRefreshToken == null)
+		{
+			return new LoginResult
+			{
+				Success = false,
+				Errors = new List<string> { "Invalid or expired refresh token." }
+			};
+		}
+
+		// Revoke the old refresh token
+		storedRefreshToken.IsRevoked = true;
+
+		// Generate new tokens
+		var newTokens = _jwtTokenGeneratorService.GenerateTokens(user);
+
+		// Enforce max refresh token limit
+		var maxTokens = _config.Jwt.MaxRefreshTokensPerUser;
+		if (user.RefreshTokens.Count >= maxTokens)
+		{
+			var tokensToRemove = user.RefreshTokens
+				.Where(rt => !rt.IsRevoked)
+				.OrderBy(rt => rt.Expires)
+				.Take(user.RefreshTokens.Count - maxTokens + 1)
+				.ToList();
+
+			foreach (var oldToken in tokensToRemove)
+			{
+				user.RefreshTokens.Remove(oldToken);
+			}
+		}
+
+		// Add the new refresh token
+		var newRefreshToken = new RefreshToken
+		{
+			Token = newTokens.RefreshToken,
+			Expires = newTokens.RefreshTokenExpiration,
+			UserId = user.Id
+		};
+
+		user.RefreshTokens.Add(newRefreshToken);
+		await _context.SaveChangesAsync();
+
+		return new LoginResult
+		{
+			Success = true,
+			Response = new LoginResponse
+			{
+				Token = newTokens.Token,
+				Expiration = newTokens.Expiration,
+				RefreshToken = newTokens.RefreshToken,
+				RefreshTokenExpiration = newTokens.RefreshTokenExpiration
+			}
+		};
+	}
+
+	/// <summary>
 	/// Extracts the ClaimsPrincipal from an expired JWT access token
 	/// without validating its lifetime. This allows the server to access the user's identity
 	/// and claims even after the token has expired.

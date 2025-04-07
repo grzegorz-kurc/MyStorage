@@ -10,5 +10,6 @@ namespace MyStorageAPI.Services.Interfaces
 		Task<RegisterResult> SendPasswordResetEmailAsync(string email);
 		Task<RegisterResult> ResetPasswordAsync(string userId, string token, string newPassword);
 		Task<LoginResult> LoginAsync(string email, string password);
+		Task<LoginResult> RefreshTokenAsync(string expiredAccessToken, string refreshToken);
 	}
 }
