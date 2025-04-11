@@ -12,6 +12,7 @@ using System.Security.Claims;
 using MyStorageAPI.Services;
 using MyStorageAPI.Data;
 using Microsoft.EntityFrameworkCore;
+using MyStorageAPI.Models.Requests;
 
 public class AuthService : IAuthService
 {
@@ -337,6 +338,43 @@ public class AuthService : IAuthService
 				RefreshTokenExpiration = newTokens.RefreshTokenExpiration
 			}
 		};
+	}
+
+	/// <summary>
+	/// Changes the user's password after verifying the current one.
+	/// </summary>
+	public async Task<RegisterResult> ChangePasswordAsync(string userId, ChangePasswordRequest request)
+	{
+		var user = await _userManager.FindByIdAsync(userId);
+		if (user == null || !user.EmailConfirmed || !user.IsVisible)
+		{
+			return new RegisterResult
+			{
+				Success = false,
+				Errors = new List<string> { "User not found or inactive." }
+			};
+		}
+
+		if (request.NewPassword != request.ConfirmPassword)
+		{
+			return new RegisterResult
+			{
+				Success = false,
+				Errors = new List<string> { "New password and confirmation do not match." }
+			};
+		}
+
+		var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+		if (!result.Succeeded)
+		{
+			return new RegisterResult
+			{
+				Success = false,
+				Errors = result.Errors.Select(e => e.Description).ToList()
+			};
+		}
+
+		return new RegisterResult { Success = true };
 	}
 
 	/// <summary>
