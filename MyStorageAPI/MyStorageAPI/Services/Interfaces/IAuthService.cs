@@ -1,4 +1,5 @@
-﻿using MyStorageAPI.Models.Responses;
+﻿using MyStorageAPI.Models.Requests;
+using MyStorageAPI.Models.Responses;
 
 namespace MyStorageAPI.Services.Interfaces
 {
@@ -11,5 +12,6 @@ namespace MyStorageAPI.Services.Interfaces
 		Task<RegisterResult> ResetPasswordAsync(string userId, string token, string newPassword);
 		Task<LoginResult> LoginAsync(string email, string password);
 		Task<LoginResult> RefreshTokenAsync(string expiredAccessToken, string refreshToken);
+		Task<RegisterResult> ChangePasswordAsync(string userId, ChangePasswordRequest request);
 	}
 }
