@@ -2,10 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using MyStorageAPI.Models.Configuration;
-using MyStorageAPI.Models.Enums;
 using MyStorageAPI.Models.Requests;
-using MyStorageAPI.Models.Responses;
 using MyStorageAPI.Services.Interfaces;
+using System.Security.Claims;
 
 namespace MyStorageAPI.Controllers
 {
@@ -341,6 +340,57 @@ namespace MyStorageAPI.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Unexpected error occurred while refreshing token.");
+				return StatusCode(500, "An error occurred while processing the request.");
+			}
+		}
+
+		/// <summary>
+		/// Changes the password for a logged-in user.
+		/// </summary>
+		/// <remarks>
+		/// **Sample request:**
+		///
+		///     POST /api/auth/change-password
+		///     {
+		///         "currentPassword": "OldPassword123!",
+		///         "newPassword": "NewPassword123!",
+		///         "confirmPassword": "NewPassword123!"
+		///     }
+		/// </remarks>
+		/// <param name="request">Change password request model.</param>
+		/// <returns>Success message or error details.</returns>
+		/// <response code="200">Password changed successfully.</response>
+		/// <response code="400">Invalid request or password change failed.</response>
+		/// <response code="401">Unauthorized.</response>
+		/// <response code="500">Internal server error.</response>
+		[Authorize]
+		[HttpPost("change-password")]
+		public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+		{
+			try
+			{
+				if (!ModelState.IsValid)
+				{
+					return BadRequest(new { errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
+				}
+
+				var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+				if (string.IsNullOrEmpty(userId))
+				{
+					return Unauthorized("User ID not found in token.");
+				}
+
+				var result = await _authService.ChangePasswordAsync(userId, request);
+				if (!result.Success)
+				{
+					return BadRequest(new { errors = result.Errors });
+				}
+
+				return Ok("Password changed successfully.");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Unexpected error occurred during password change.");
 				return StatusCode(500, "An error occurred while processing the request.");
 			}
 		}
